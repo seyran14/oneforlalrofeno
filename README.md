@@ -1,175 +1,158 @@
 # Seyran Website
 
-Личный сайт построен на **Astro + React + Framer Motion + Tailwind CSS**.
+Build on **Astro + React + Framer Motion + Tailwind CSS**.
 
-## 🚀 Быстрый старт
+## 📝 How to add a new post
 
-### 1. Установи зависимости
-```bash
-npm install
-```
-
-### 2. Запусти локально
-```bash
-npm run dev
-```
-
-Сайт откроется на `http://localhost:4321`
-
----
-
-## 📝 Как добавить новый пост
-
-Открой файл `src/pages/index.astro` и добавь новый блок `<Post>`:
+Open file `src/pages/index.astro` and add a new block `<Post>`:
 
 ```astro
 <Post 
   client:load
-  title="Название твоего поста"
-  date="19 февраля 2026"
+  title="Name of the post"
+  date="19 feb 2026"
 >
-  <p>Текст поста...</p>
-  <p>Можно несколько параграфов.</p>
+  <p>Text...</p>
+  <p>Can be a few paragraph.</p>
 </Post>
 ```
 
-Сохрани файл — изменения появятся автоматически в браузере.
-
+Save a file and it will be automatically pushed.
 ---
 
-## 🎨 Структура проекта
+## 🎨 Structure
 
 ```
 seyran-website/
 ├── src/
-│   ├── components/       # React компоненты с анимациями
-│   │   ├── Header.tsx    # Шапка сайта
-│   │   └── Post.tsx      # Компонент поста
+│   ├── components/       # React components with animation
+│   │   ├── Header.tsx    # Header of the site
+│   │   └── Post.tsx      # The post's components
 │   ├── layouts/          
-│   │   └── BaseLayout.astro  # Базовый HTML шаблон
+│   │   └── BaseLayout.astro  # Basic HTML template
 │   ├── pages/
-│   │   └── index.astro   # Главная страница (тут добавляешь посты)
+│   │   └── index.astro   # Main page (here u adding posts)
 │   └── styles/
-│       └── global.css    # Глобальные стили
+│       └── global.css    # Global styles
 ├── package.json
 └── README.md
 ```
 
 ---
 
-## 🎬 Про анимации (Framer Motion)
+Here is the full English translation of your text:
 
-Все анимации настроены в компонентах `Header.tsx` и `Post.tsx`.
+⸻
 
-### Текущие анимации:
-- **Header** — появляется сверху при загрузке
-- **Посты** — появляются при прокрутке (fade in + slide up)
-- **Разделители** — анимация линии после каждого поста
+🎬 About Animations (Framer Motion)
 
-### Как добавить свои анимации:
+All animations are configured inside the components Header.tsx and Post.tsx.
 
-Открой `src/components/Post.tsx` и меняй параметры:
+Current animations:
+	•	Header — slides in from the top on load
+	•	Posts — appear on scroll (fade in + slide up)
+	•	Dividers — animated line after each post
 
-```tsx
+How to add your own animations:
+
+Open src/components/Post.tsx and tweak the parameters:
+
 <motion.article
-  initial={{ opacity: 0, y: 20 }}      // Начальное состояние
-  whileInView={{ opacity: 1, y: 0 }}   // Конечное состояние
-  transition={{ duration: 0.6 }}        // Скорость анимации
+  initial={{ opacity: 0, y: 20 }}      // Initial state
+  whileInView={{ opacity: 1, y: 0 }}   // Final state
+  transition={{ duration: 0.6 }}       // Animation speed
 >
+
+Useful parameters:
+
+	•	y: 50 — move down
+	•	x: -100 — move left
+	•	scale: 0.8 — scale
+	•	rotate: 45 — rotate
+	•	delay: 0.5 — delay
+
+Framer Motion documentation:
+https://www.framer.com/motion/
+
+⸻
+
+🌐 Deploy to Cloudflare Pages
+
+Option 1: Via GitHub (recommended)
+	1.	Create a GitHub repository:
 ```
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/seyran-website.git
+git push -u origin main
 
-**Полезные параметры:**
-- `y: 50` — сдвиг вниз
-- `x: -100` — сдвиг влево
-- `scale: 0.8` — масштаб
-- `rotate: 45` — поворот
-- `delay: 0.5` — задержка
+```
+	2.	Connect Cloudflare Pages:
+	•	Go to https://dash.cloudflare.com
+	•	Workers & Pages → Create application → Pages → Connect to Git
+	•	Select the repository seyran-website
+	3.	Build settings:
+	•	Framework preset: Astro
+	•	Build command: npm run build
+	•	Build output directory: dist
+	4.	Add your domain:
+	•	Project settings → Custom domains → Set up a custom domain
+	•	Enter seyran.cc
+	•	DNS will be configured automatically
 
-Документация Framer Motion: https://www.framer.com/motion/
+Done! Every git push will now automatically update your website.
 
----
+⸻
 
-## 🌐 Деплой на Cloudflare Pages
-
-### Вариант 1: Через GitHub (рекомендую)
-
-1. **Создай репозиторий на GitHub:**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/ТВОЙ_USERNAME/seyran-website.git
-   git push -u origin main
-   ```
-
-2. **Подключи Cloudflare Pages:**
-   - Иди на https://dash.cloudflare.com
-   - **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**
-   - Выбери репозиторий `seyran-website`
-   
-3. **Настройки билда:**
-   - Framework preset: **Astro**
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-
-4. **Добавь домен:**
-   - В настройках проекта → **Custom domains** → **Set up a custom domain**
-   - Введи `seyran.cc`
-   - DNS настроится автоматически
-
-Готово! Теперь при каждом `git push` сайт будет обновляться автоматически.
-
----
-
-### Вариант 2: Прямой деплой через Wrangler
-
-```bash
+Option 2: Direct deploy using Wrangler
+```
 npm install -g wrangler
 npx wrangler pages deploy dist
 ```
 
----
+⸻
 
-## 🛠 Команды
+🛠 Commands
 
-| Команда | Действие |
-|---------|----------|
-| `npm install` | Установить зависимости |
-| `npm run dev` | Запустить локально на `localhost:4321` |
-| `npm run build` | Собрать продакшен версию в `dist/` |
-| `npm run preview` | Предпросмотр продакшен билда |
+Command	Action
+```
+npm install	Install dependencies
+npm run dev	Run locally at localhost:4321
+npm run build	Build production version into dist/
+npm run preview	Preview production build
+```
 
----
+⸻
 
-## 📚 Что дальше
+📚 What’s Next
 
-### Следующие шаги:
-1. ✅ Запусти сайт локально
-2. ✅ Добавь несколько своих постов
-3. ✅ Залей на GitHub
-4. ✅ Подключи Cloudflare Pages
-5. ⬜ Настрой свои анимации
-6. ⬜ Добавь картинки в посты
-7. ⬜ Поменяй шрифты и цвета под себя
+Next steps:
+	1.	✅ Run the site locally
+	2.	✅ Add a few of your own posts
+	3.	✅ Push to GitHub
+	4.	✅ Connect Cloudflare Pages
+	5.	⬜ Customize animations
+	6.	⬜ Add images to posts
+	7.	⬜ Change fonts and colors
 
-### Идеи для развития:
-- Добавить тёмную/светлую тему
-- Создать галерею фото
-- Добавить фильтры по тегам
-- Сделать search по постам
-- Добавить RSS ленту
-- Интеграция с CMS (например Contentful)
+Ideas for growth:
+	-	Add dark/light theme
+	-	Create a photo gallery
+	-	Add tag filtering
+	-	Implement post search
+	-	Add RSS feed
+	-	CMS integration (e.g., Contentful)
 
----
+⸻
 
-## 💡 Полезные ссылки
-
+💡 Useful Links
 - [Astro Docs](https://docs.astro.build)
 - [Framer Motion Docs](https://www.framer.com/motion/)
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - [Cloudflare Pages Docs](https://developers.cloudflare.com/pages)
+￼ 
+⸻
 
----
-
-**Удачи с сайтом! 🚀**
+Good luck to me! 🚀
