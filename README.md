@@ -1,6 +1,6 @@
 # Seyran Website
 
-Build on **Astro + React + Framer Motion + Tailwind CSS**.
+Build on **Astro + React + Framer Motion + Tailwind CSS**
 
 ## 📝 How to add a new post
 
