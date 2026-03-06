@@ -155,4 +155,4 @@ Ideas for growth:
 ￼ 
 ⸻
 
-Good luck to me! 🚀
+Good luck  to me! 🚀
