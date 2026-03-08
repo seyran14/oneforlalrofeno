@@ -75,8 +75,8 @@ export async function getPostsFromNotion(): Promise<NotionPost[]> {
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const months = [
-    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+    'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
   ];
   
   const day = date.getDate();
