@@ -1,0 +1,50 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header';
+import Thought from '../components/Thought';
+import { getThoughtsFromNotion } from '../lib/notion';
+
+const thoughts = await getThoughtsFromNotion();
+---
+
+<BaseLayout title="Thoughts — Seyran">
+  <div class="min-h-screen px-6 md:px-12 py-12 md:py-20">
+    <div class="max-w-4xl mx-auto">
+      
+      {/* Header with Navigation */}
+      <Header client:load />
+
+      {/* Page Title */}
+      <div class="mb-12">
+        <h1 class="text-4xl font-bold text-white mb-2">Thoughts</h1>
+        <p class="text-zinc-500">Quick reflections and ideas</p>
+      </div>
+
+      {/* Thoughts Section */}
+      <div class="space-y-0">
+        
+        {thoughts.length > 0 ? (
+          thoughts.map((thought) => (
+            <Thought 
+              client:load
+              title={thought.title}
+              date={thought.date}
+            >
+              {thought.content.split('\n\n').map((paragraph) => (
+                paragraph.trim() && <p set:html={paragraph.replace(/\n/g, '<br />')} />
+              ))}
+            </Thought>
+          ))
+        ) : (
+          <div class="text-center py-20">
+            <p class="text-zinc-500 text-lg">
+              No thoughts yet. Add your first thought in Notion!
+            </p>
+          </div>
+        )}
+
+      </div>
+
+    </div>
+  </div>
+</BaseLayout>

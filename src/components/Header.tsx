@@ -5,34 +5,39 @@ export default function Header() {
     <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
-      className="mb-20"
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="mb-16"
     >
-      <motion.h1 
-        className="text-5xl md:text-7xl font-bold mb-4 tracking-tight"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
-      >
-        seyran
-      </motion.h1>
+      <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+        Seyran
+      </h1>
       
-      <motion.p 
-        className="text-xl text-zinc-400 max-w-2xl"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-      >
-        LIFE
-      </motion.p>
-
-      {/* Decorative line */}
-      <motion.div
-        className="mt-8 h-px bg-gradient-to-r from-white via-zinc-600 to-transparent"
-        initial={{ scaleX: 0, transformOrigin: "left" }}
-        animate={{ scaleX: 1 }}
-        transition={{ delay: 0.6, duration: 1 }}
-      />
+      <nav className="flex gap-6 text-sm md:text-base">
+        <a 
+          href="/" 
+          className="text-zinc-400 hover:text-white transition-colors duration-200"
+        >
+          Home
+        </a>
+        <a 
+          href="/posts" 
+          className="text-zinc-400 hover:text-white transition-colors duration-200"
+        >
+          Posts
+        </a>
+        <a 
+          href="/thoughts" 
+          className="text-zinc-400 hover:text-white transition-colors duration-200"
+        >
+          Thoughts
+        </a>
+        <a 
+          href="/media" 
+          className="text-zinc-400 hover:text-white transition-colors duration-200"
+        >
+          Media
+        </a>
+      </nav>
     </motion.header>
   );
 }

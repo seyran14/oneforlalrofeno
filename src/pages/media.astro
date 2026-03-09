@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header';
+import MediaItem from '../components/MediaItem';
+import { getMediaFromNotion } from '../lib/notion';
+
+const media = await getMediaFromNotion();
+---
+
+<BaseLayout title="Media — Seyran">
+  <div class="min-h-screen px-6 md:px-12 py-12 md:py-20">
+    <div class="max-w-4xl mx-auto">
+      
+      {/* Header with Navigation */}
+      <Header client:load />
+
+      {/* Page Title */}
+      <div class="mb-12">
+        <h1 class="text-4xl font-bold text-white mb-2">Media</h1>
+        <p class="text-zinc-500">Photos and audio moments</p>
+      </div>
+
+      {/* Media Section */}
+      <div class="space-y-0">
+        
+        {media.length > 0 ? (
+          media.map((item) => (
+            <MediaItem 
+              client:load
+              title={item.title}
+              date={item.date}
+              photoUrl={item.photoUrl}
+              audioName={item.audioName}
+            />
+          ))
+        ) : (
+          <div class="text-center py-20">
+            <p class="text-zinc-500 text-lg">
+              No media yet. Add your first media item in Notion!
+            </p>
+          </div>
+        )}
+
+      </div>
+
+    </div>
+  </div>
+</BaseLayout>
