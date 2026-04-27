@@ -1,4 +1,4 @@
-# Seyran Website
+1# Seyran Website
 
 Build on **Astro + React + Framer Motion + Tailwind CSS**
 
