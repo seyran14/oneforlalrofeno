@@ -50,7 +50,7 @@ export async function getPostsFromNotion(): Promise<NotionPost[]> {
       },
       sorts: [
         {
-          timestamp: 'created_time',
+          property: 'date',
           direction: 'descending',
         },
       ],
@@ -128,7 +128,7 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
       },
       sorts: [
         {
-          property: 'Date',
+          timestamp: 'created_time',
           direction: 'descending',
         },
       ],
