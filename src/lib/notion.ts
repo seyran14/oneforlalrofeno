@@ -128,7 +128,7 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
       },
       sorts: [
         {
-          timestamp: 'created_time',
+          property: 'order',
           direction: 'ascending',
         },
       ],
