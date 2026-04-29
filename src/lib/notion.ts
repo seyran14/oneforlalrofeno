@@ -149,8 +149,8 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
         const urlText = properties['Photo URL'].rich_text[0].plain_text;
         photoUrls = urlText
           .split(',')
-          .map(url => url.trim())
-          .filter(url => url.length > 0);
+          .map((url: string) => url.trim())
+          .filter((url:string) => url.length > 0);
       }
       
       return {
