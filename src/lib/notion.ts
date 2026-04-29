@@ -145,12 +145,16 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
         photoUrls = [properties['Photo URL'].url];
       }
       // Если это поле типа Text с несколькими ссылками через запятую
-      else if (properties['Photo URL']?.rich_text?.[0]?.plain_text) {
-        const urlText = properties['Photo URL'].rich_text[0].plain_text;
+      else if (properties['Photo URL']?.rich_text) {
+        // Собираем весь текст из всех rich_text блоков (включая форматированный)
+        const urlText = properties['Photo URL'].rich_text
+          .map((block: any) => block.plain_text)
+          .join('');
+  
         photoUrls = urlText
           .split(',')
           .map((url: string) => url.trim())
-          .filter((url:string) => url.length > 0);
+          .filter((url: string) => url.length > 0);
       }
       
       return {
