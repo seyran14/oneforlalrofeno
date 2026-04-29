@@ -21,7 +21,7 @@ export interface NotionMedia {
   id: string;
   title: string;
   date: string;
-  photoUrl: string;
+  photoUrls: string[];  // Изменено: теперь массив ссылок
   audioName: string;
   published: boolean;
 }
@@ -128,7 +128,7 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
       },
       sorts: [
         {
-          property: 'order',
+          property: 'Number',
           direction: 'ascending',
         },
       ],
@@ -136,11 +136,28 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
 
     const media = response.results.map((page: any) => {
       const properties = page.properties;
+      
+      // Парсим Photo URL - может быть как одна ссылка (тип URL), так и несколько (тип Text)
+      let photoUrls: string[] = [];
+      
+      // Если это поле типа URL (старый формат)
+      if (properties['Photo URL']?.url) {
+        photoUrls = [properties['Photo URL'].url];
+      }
+      // Если это поле типа Text с несколькими ссылками через запятую
+      else if (properties['Photo URL']?.rich_text?.[0]?.plain_text) {
+        const urlText = properties['Photo URL'].rich_text[0].plain_text;
+        photoUrls = urlText
+          .split(',')
+          .map(url => url.trim())
+          .filter(url => url.length > 0);
+      }
+      
       return {
         id: page.id,
         title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
         date: properties.Date?.date?.start ? formatDate(properties.Date.date.start) : 'No date',
-        photoUrl: properties['Photo URL']?.url || '',
+        photoUrls: photoUrls,
         audioName: properties['Audio Name']?.rich_text?.[0]?.plain_text || '',
         published: properties.Published?.checkbox || false,
       };
