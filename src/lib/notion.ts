@@ -50,7 +50,7 @@ export async function getPostsFromNotion(): Promise<NotionPost[]> {
       },
       sorts: [
         {
-          property: 'date',
+          property: 'Date',
           direction: 'descending',
         },
       ],
