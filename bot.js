@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Читаем токены из .env
-const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const GITHUB_TOKEN   = process.env.GITHUB_TOKEN;
 
 const GITHUB_OWNER = 'seyran14';

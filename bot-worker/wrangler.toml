@@ -1,0 +1,8 @@
+name = "seyran-telegram-bot"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Secrets (do NOT put them here — set them with `wrangler secret put`):
+#   TELEGRAM_TOKEN   — Telegram bot token
+#   GITHUB_TOKEN     — GitHub token with repo write access
+#   WEBHOOK_SECRET   — random string; also passed to Telegram setWebhook
