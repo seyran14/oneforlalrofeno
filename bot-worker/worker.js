@@ -126,7 +126,11 @@ async function tg(token, method, body) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return resp.json();
+  const data = await resp.json();
+  if (!data.ok) {
+    console.error(`Telegram ${method} failed: ${resp.status} ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 function ghHeaders(env) {
