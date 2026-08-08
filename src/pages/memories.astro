@@ -17,7 +17,7 @@ const memories = await getMemoriesFromNotion();
       {/* Page Title */}
       <div class="mb-12">
         <h1 class="text-4xl font-bold text-white mb-2">Memories</h1>
-        <p class="text-zinc-500">Photos and audio moments</p>
+        <p class="text-zinc-500">Photos and moments</p>
       </div>
 
       {/* Memories Section */}
@@ -30,7 +30,6 @@ const memories = await getMemoriesFromNotion();
               title={item.title}
               date={item.date}
               photoUrls={item.photoUrls}
-              audioName={item.audioName}
             />
           ))
         ) : (

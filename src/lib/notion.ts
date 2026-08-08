@@ -22,7 +22,6 @@ export interface NotionMemory {
   title: string;
   date: string;
   photoUrls: string[];  // Изменено: теперь массив ссылок
-  audioName: string;
   published: boolean;
 }
 
@@ -172,7 +171,6 @@ export async function getMemoriesFromNotion(): Promise<NotionMemory[]> {
         title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
         date: properties.Date?.date?.start ? formatDate(properties.Date.date.start) : 'No date',
         photoUrls: photoUrls,
-        audioName: properties['Audio Name']?.rich_text?.[0]?.plain_text || '',
         published: properties.Published?.checkbox || false,
       };
     });
