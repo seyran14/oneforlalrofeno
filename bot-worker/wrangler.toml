@@ -2,6 +2,10 @@ name = "seyran-telegram-bot"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
+# Account-scoped API tokens cannot read /memberships, so wrangler needs the
+# account spelled out (this is an identifier, not a secret).
+account_id = "02aef6c0e60dadf060f2a695f0161b03"
+
 # Secrets (do NOT put them here — set them with `wrangler secret put`):
 #   TELEGRAM_TOKEN   — Telegram bot token
 #   GITHUB_TOKEN     — GitHub token with repo write access

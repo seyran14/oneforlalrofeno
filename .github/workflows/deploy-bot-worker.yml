@@ -3,8 +3,7 @@ name: Deploy bot worker
 # Deploys bot-worker/ to Cloudflare Workers whenever its code changes on main,
 # so the bot can be updated without a laptop. Needs one repository secret:
 #   CLOUDFLARE_API_TOKEN  — token with the "Edit Cloudflare Workers" permission
-# Optional, only if the token can see more than one account:
-#   CLOUDFLARE_ACCOUNT_ID
+# The account is pinned in bot-worker/wrangler.toml.
 
 on:
   push:
@@ -23,5 +22,4 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: bot-worker
