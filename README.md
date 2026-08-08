@@ -1,4 +1,4 @@
-⚡️# Seyran Website
+electro⚡️# Seyran Website
 
 Build on **Astro + React + Framer Motion + Tailwind CSS**
 
