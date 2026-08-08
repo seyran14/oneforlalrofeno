@@ -31,8 +31,14 @@ export default function Header() {
         >
           Thoughts
         </a>
-        <a 
-          href="/media" 
+        <a
+          href="/memories"
+          className="text-zinc-400 hover:text-white transition-colors duration-200"
+        >
+          Memories
+        </a>
+        <a
+          href="/media"
           className="text-zinc-400 hover:text-white transition-colors duration-200"
         >
           Media

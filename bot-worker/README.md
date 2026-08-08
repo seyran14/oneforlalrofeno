@@ -1,9 +1,18 @@
 # Telegram bot on Cloudflare Workers (24/7, free)
 
-Webhook version of the photo-upload bot. Runs serverless on Cloudflare's free
+Webhook version of the upload bot. Runs serverless on Cloudflare's free
 plan (100k requests/day, no sleeping). Same behaviour as the local `bot.js`:
-send a photo with a caption → it's committed to `public/images/` and you get the
-`https://seyran.cc/images/<caption>.jpg` URL back.
+
+- **Photo + caption** → committed to `public/images/`, you get
+  `https://seyran.cc/images/<caption>.jpg` back (Photo URL column in the
+  Memories database).
+- **Track + caption** (audio file, voice message, or an audio document —
+  mp3/m4a/wav/flac/ogg/opus) → committed to `public/audio/`, you get
+  `https://seyran.cc/audio/<caption>.<ext>` back (Audio URL column in the Music
+  database). The caption is also the track title.
+
+Telegram bots can only download files up to 20 MB, so bigger tracks have to be
+committed by hand.
 
 ## One-time deploy
 
@@ -31,7 +40,7 @@ WORKER_URL=https://seyran-telegram-bot.<your-subdomain>.workers.dev \
   ./set-webhook.sh
 ```
 
-Done — the bot is live 24/7. Send it a photo with a caption to test.
+Done — the bot is live 24/7. Send it a photo or a track with a caption to test.
 
 ## Updating the code later
 

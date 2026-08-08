@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header';
+import MemoryItem from '../components/MemoryItem';
+import { getMemoriesFromNotion } from '../lib/notion';
+
+const memories = await getMemoriesFromNotion();
+---
+
+<BaseLayout title="Memories — Seyran">
+  <div class="min-h-screen px-6 md:px-12 py-12 md:py-20">
+    <div class="max-w-4xl mx-auto">
+
+      {/* Header with Navigation */}
+      <Header client:load />
+
+      {/* Page Title */}
+      <div class="mb-12">
+        <h1 class="text-4xl font-bold text-white mb-2">Memories</h1>
+        <p class="text-zinc-500">Photos and audio moments</p>
+      </div>
+
+      {/* Memories Section */}
+      <div class="space-y-0">
+
+        {memories.length > 0 ? (
+          memories.map((item) => (
+            <MemoryItem
+              client:load
+              title={item.title}
+              date={item.date}
+              photoUrls={item.photoUrls}
+              audioName={item.audioName}
+            />
+          ))
+        ) : (
+          <div class="text-center py-20">
+            <p class="text-zinc-500 text-lg">
+              No memories yet. Add your first memory in Notion!
+            </p>
+          </div>
+        )}
+
+      </div>
+
+    </div>
+  </div>
+</BaseLayout>

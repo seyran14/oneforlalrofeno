@@ -2,14 +2,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
 
-interface MediaItemProps {
+interface MemoryItemProps {
   title: string;
   date: string;
   photoUrls: string[];
   audioName: string;
 }
 
-export default function MediaItem({ title, date, photoUrls, audioName }: MediaItemProps) {
+export default function MemoryItem({ title, date, photoUrls, audioName }: MemoryItemProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   

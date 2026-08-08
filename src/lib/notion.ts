@@ -17,12 +17,20 @@ export interface NotionThought {
   published: boolean;
 }
 
-export interface NotionMedia {
+export interface NotionMemory {
   id: string;
   title: string;
   date: string;
   photoUrls: string[];  // Изменено: теперь массив ссылок
   audioName: string;
+  published: boolean;
+}
+
+export interface NotionTrack {
+  id: string;
+  title: string;
+  audioUrl: string;
+  order: number;
   published: boolean;
 }
 
@@ -33,7 +41,9 @@ const notion = new Client({
 
 const postsDbId = import.meta.env.NOTION_POSTS_DB;
 const thoughtsDbId = import.meta.env.NOTION_THOUGHTS_DB;
-const mediaDbId = import.meta.env.NOTION_MEDIA_DB;
+// База Memories — раньше называлась Media, старое имя переменной всё ещё работает
+const memoriesDbId = import.meta.env.NOTION_MEMORIES_DB || import.meta.env.NOTION_MEDIA_DB;
+const musicDbId = import.meta.env.NOTION_MUSIC_DB;
 
 /**
  * Получить все опубликованные посты из Notion
@@ -114,12 +124,12 @@ export async function getThoughtsFromNotion(): Promise<NotionThought[]> {
 }
 
 /**
- * Получить все опубликованные медиа из Notion
+ * Получить все опубликованные воспоминания (фото) из Notion
  */
-export async function getMediaFromNotion(): Promise<NotionMedia[]> {
+export async function getMemoriesFromNotion(): Promise<NotionMemory[]> {
   try {
     const response = await notion.databases.query({
-      database_id: mediaDbId,
+      database_id: memoriesDbId,
       filter: {
         property: 'Published',
         checkbox: {
@@ -134,7 +144,7 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
       ],
     });
 
-    const media = response.results.map((page: any) => {
+    const memories = response.results.map((page: any) => {
       const properties = page.properties;
       
       // Парсим Photo URL - может быть как одна ссылка (тип URL), так и несколько (тип Text)
@@ -167,9 +177,61 @@ export async function getMediaFromNotion(): Promise<NotionMedia[]> {
       };
     });
 
-    return media;
+    return memories;
   } catch (error) {
-    console.error('Error fetching media from Notion:', error);
+    console.error('Error fetching memories from Notion:', error);
+    return [];
+  }
+}
+
+/**
+ * Получить все опубликованные треки из Notion
+ *
+ * Свойства базы: Title (title), Audio URL (url или text), Published (checkbox),
+ * Number (number, опционально — задаёт порядок).
+ */
+export async function getTracksFromNotion(): Promise<NotionTrack[]> {
+  if (!musicDbId) {
+    console.warn('NOTION_MUSIC_DB is not set — music page will be empty');
+    return [];
+  }
+
+  try {
+    const response = await notion.databases.query({
+      database_id: musicDbId,
+      filter: {
+        property: 'Published',
+        checkbox: {
+          equals: true,
+        },
+      },
+    });
+
+    const tracks = response.results.map((page: any, index: number) => {
+      const properties = page.properties;
+
+      // Audio URL — поле типа URL или обычный текст
+      const audioUrl = (
+        properties['Audio URL']?.url ||
+        properties['Audio URL']?.rich_text?.map((block: any) => block.plain_text).join('') ||
+        ''
+      ).trim();
+
+      return {
+        id: page.id,
+        title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
+        audioUrl,
+        order: typeof properties.Number?.number === 'number' ? properties.Number.number : index,
+        published: properties.Published?.checkbox || false,
+      };
+    });
+
+    // Сортируем на нашей стороне, чтобы не требовать наличия поля Number в базе
+    return tracks
+      .filter((track) => track.audioUrl.length > 0)
+      .sort((a, b) => a.order - b.order);
+  } catch (error) {
+    console.error('Error fetching tracks from Notion:', error);
     return [];
   }
 }
