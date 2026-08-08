@@ -19,15 +19,16 @@ import Header from '../components/Header';
           A collection of posts, thoughts, memories, and music.
         </p>
         
-        <div class="mt-12 flex flex-wrap justify-center gap-4">
-          <a 
-            href="/posts" 
+        {/* На телефоне — ровный список во всю ширину, с sm — привычный ряд */}
+        <div class="mt-12 flex flex-col items-stretch gap-3 max-w-xs mx-auto sm:flex-row sm:flex-wrap sm:justify-center sm:items-center sm:gap-4 sm:max-w-none">
+          <a
+            href="/posts"
             class="px-8 py-3 bg-white text-black rounded-lg font-medium hover:bg-zinc-200 transition-colors"
           >
             View Posts
           </a>
-          <a 
-            href="/thoughts" 
+          <a
+            href="/thoughts"
             class="px-8 py-3 border border-zinc-700 text-white rounded-lg font-medium hover:border-zinc-500 transition-colors"
           >
             Read Thoughts
