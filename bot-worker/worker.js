@@ -142,7 +142,7 @@ async function handleUpdate(update, env) {
   if (msg.text) {
     const bigFiles =
       env.UPLOAD_SECRET && env.WORKER_URL
-        ? `\n\n📦 Больше 20 МБ (длинные миксы) — через страницу загрузки, файл уйдёт в R2:\n${env.WORKER_URL}/upload?key=${env.UPLOAD_SECRET}`
+        ? `\n\n📦 Over 20 MB (long mixes) → upload page, the file goes to R2:\n${env.WORKER_URL}/upload?key=${env.UPLOAD_SECRET}`
         : '';
 
     await tg(token, 'sendMessage', {
@@ -209,9 +209,9 @@ async function publish(env, chatId, opts) {
     await commitTelegramFile(env, opts);
   } catch (err) {
     let text = `❌ Error: ${err.message}`;
-    // Слишком большой файл — не тупик: есть страница загрузки в обход Телеграма.
+    // A file that is too big is not a dead end — the upload page bypasses Telegram.
     if (/larger than 20 MB/.test(err.message) && env.UPLOAD_SECRET && env.WORKER_URL) {
-      text += `\n\nЗалей через страницу загрузки:\n${env.WORKER_URL}/upload?key=${env.UPLOAD_SECRET}`;
+      text += `\n\nUpload it here instead:\n${env.WORKER_URL}/upload?key=${env.UPLOAD_SECRET}`;
     }
     await tg(token, 'sendMessage', { chat_id: chatId, text, disable_web_page_preview: true });
     return;
@@ -375,17 +375,19 @@ async function handleUpload(request, env, url) {
   const title = (url.searchParams.get('title') || '').trim();
   const filename = url.searchParams.get('filename') || '';
   if (!title) {
-    return json({ error: 'Название не заполнено' }, 400);
+    return json({ error: 'Title is empty' }, 400);
   }
   if (!request.body) {
-    return json({ error: 'Пустой файл' }, 400);
+    return json({ error: 'Empty file' }, 400);
   }
 
   const ext = fileExtension(filename) || 'mp3';
   const objectKey = slugify(title) + '.' + ext;
 
   try {
-    // Стримом, а не в память: файл может быть в сотню мегабайт.
+    // Streamed, never buffered: these files run to tens of megabytes. R2 only
+    // commits the object once the whole stream arrives, so an upload that is
+    // cancelled halfway leaves whatever was there before untouched.
     await env.MEDIA.put(objectKey, request.body, {
       httpMetadata: {
         contentType: request.headers.get('content-type') || 'application/octet-stream',
@@ -397,7 +399,7 @@ async function handleUpload(request, env, url) {
 
   const publicUrl = `${mediaBaseUrl(env, url)}/${encodeURIComponent(objectKey)}`;
 
-  let notionLine = 'Строку в Notion добавь вручную (NOTION_TOKEN не задан).';
+  let notionLine = 'Add the Notion row by hand (NOTION_TOKEN is not set).';
   if (env.NOTION_TOKEN && env.NOTION_MUSIC_DB) {
     try {
       const action = await upsertNotionRow(env, {
@@ -407,17 +409,17 @@ async function handleUpload(request, env, url) {
         publicUrl,
       });
       notionLine = action === 'updated'
-        ? `Notion: строка «${title}» обновлена`
-        : `Notion: строка «${title}» создана, Published ✓`;
+        ? `Notion: row "${title}" updated`
+        : `Notion: row "${title}" created, Published ✓`;
     } catch (err) {
-      notionLine = `Загружено, но Notion не ответил: ${err.message}`;
+      notionLine = `Uploaded, but Notion failed: ${err.message}`;
     }
   }
 
   return json({ url: publicUrl, notion: notionLine });
 }
 
-/** Отдаём файл из R2 с поддержкой Range — без неё длинное аудио не перематывается. */
+/** Serve from R2 with Range support — long audio cannot be seeked without it. */
 async function serveFromR2(request, env, key) {
   if (!env.MEDIA) return new Response('R2 is not configured', { status: 503 });
   if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -458,10 +460,10 @@ function json(body, status = 200) {
 
 function uploadPage() {
   return `<!doctype html>
-<html lang="ru"><head>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Загрузка трека</title>
+<title>Upload a track</title>
 <style>
   :root { color-scheme: dark }
   body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
@@ -473,28 +475,68 @@ function uploadPage() {
          border:1px solid #3f3f46; border-radius:8px; padding:12px; font-size:16px; margin-bottom:18px }
   button { width:100%; padding:14px; border:0; border-radius:8px; background:#fff; color:#000;
          font-size:16px; font-weight:600; cursor:pointer }
+  button.ghost { background:transparent; color:#fff; border:1px solid #3f3f46; margin-top:10px }
   button:disabled { background:#3f3f46; color:#a1a1aa; cursor:default }
   .bar { height:4px; background:#27272a; border-radius:2px; overflow:hidden; margin-top:18px; display:none }
   .bar div { height:100%; width:0; background:#fff; transition:width .2s }
   .msg { margin-top:18px; font-size:14px; color:#a1a1aa; word-break:break-all }
+  .hidden { display:none }
   a { color:#fff }
 </style></head><body>
 <div class="card">
-  <h1>Новый трек</h1>
-  <label for="title">Название</label>
-  <input id="title" type="text" placeholder="Например: Sunday Mix" autocomplete="off">
-  <label for="file">Файл</label>
-  <input id="file" type="file" accept="audio/*">
-  <button id="go">Загрузить</button>
-  <div class="bar"><div id="fill"></div></div>
+  <h1 id="head">New track</h1>
+
+  <div id="form">
+    <label for="title">Title</label>
+    <input id="title" type="text" placeholder="e.g. Sunday Mix" autocomplete="off">
+    <label for="file">File</label>
+    <input id="file" type="file" accept="audio/*">
+    <button id="go">Upload</button>
+    <div class="bar"><div id="fill"></div></div>
+  </div>
+
   <div class="msg" id="msg"></div>
+
+  <div id="done" class="hidden">
+    <button id="close">Close</button>
+    <button id="again" class="ghost">Upload another</button>
+  </div>
 </div>
 <script>
   const $ = (id) => document.getElementById(id);
+
+  // The upload is long and the button is easy to hit twice, so the form is
+  // removed on success and a second press cannot re-send anything.
+  function finish(html) {
+    $('form').classList.add('hidden');
+    $('done').classList.remove('hidden');
+    $('head').textContent = 'Uploaded';
+    $('msg').innerHTML = html;
+  }
+
+  $('close').onclick = () => {
+    window.close();
+    // A tab the script did not open cannot be closed by it, so blank the page.
+    document.body.innerHTML =
+      '<div class="card"><h1>Done</h1><div class="msg">You can close this tab.</div></div>';
+  };
+
+  $('again').onclick = () => {
+    $('form').classList.remove('hidden');
+    $('done').classList.add('hidden');
+    $('head').textContent = 'New track';
+    $('msg').textContent = '';
+    $('go').disabled = false;
+    $('title').value = '';
+    $('file').value = '';
+    $('fill').style.width = '0';
+    document.querySelector('.bar').style.display = 'none';
+  };
+
   $('go').onclick = () => {
     const title = $('title').value.trim();
     const file = $('file').files[0];
-    if (!title || !file) { $('msg').textContent = 'Заполни название и выбери файл.'; return; }
+    if (!title || !file) { $('msg').textContent = 'Fill in the title and pick a file.'; return; }
 
     const url = '/upload' + location.search
       + '&title=' + encodeURIComponent(title)
@@ -505,21 +547,20 @@ function uploadPage() {
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
     $('go').disabled = true;
     document.querySelector('.bar').style.display = 'block';
-    $('msg').textContent = 'Загружаю…';
+    $('msg').textContent = 'Uploading…';
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) $('fill').style.width = Math.round(e.loaded / e.total * 100) + '%';
     };
     xhr.onload = () => {
-      $('go').disabled = false;
-      try {
-        const r = JSON.parse(xhr.responseText);
-        $('msg').innerHTML = r.error
-          ? '❌ ' + r.error
-          : '✅ ' + r.notion + '<br><a href="' + r.url + '">' + r.url + '</a>';
-      } catch { $('msg').textContent = 'Ответ сервера: ' + xhr.status; }
+      let r;
+      try { r = JSON.parse(xhr.responseText); }
+      catch { $('go').disabled = false; $('msg').textContent = 'Server answered ' + xhr.status; return; }
+
+      if (r.error) { $('go').disabled = false; $('msg').textContent = '❌ ' + r.error; return; }
+      finish('✅ ' + r.notion + '<br><a href="' + r.url + '">' + r.url + '</a>');
     };
-    xhr.onerror = () => { $('go').disabled = false; $('msg').textContent = 'Сеть отвалилась, попробуй ещё раз.'; };
+    xhr.onerror = () => { $('go').disabled = false; $('msg').textContent = 'Connection dropped — try again.'; };
     xhr.send(file);
   };
 </script>
