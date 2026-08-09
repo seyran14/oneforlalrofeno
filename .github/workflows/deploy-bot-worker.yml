@@ -21,7 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Idempotent: fails harmlessly once the bucket exists.
+      # Idempotent: harmless once the bucket exists, and a no-op while R2 is
+      # still switched off for the account.
       - name: Ensure the R2 bucket exists
         continue-on-error: true
         run: npx --yes wrangler@4 r2 bucket create seyran-media

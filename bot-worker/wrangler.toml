@@ -19,8 +19,12 @@ NOTION_MEMORIES_DB = "31e7fe3896928037bdf5d82c7de3db2a"
 NOTION_MUSIC_DB = "3b67fe38969280248e66c6a5a27cce64"
 WORKER_URL = "https://seyran-telegram-bot.seyrans240.workers.dev"
 
-# Long mixes live here instead of the git repo. Files are served back through
-# the worker at /f/<name>; set MEDIA_BASE_URL to switch to a custom domain.
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "seyran-media"
+# Long mixes belong here instead of the git repo. Commented out until R2 is
+# switched on for the account (dash.cloudflare.com → R2), because a deploy
+# fails outright while the bucket does not exist. Without the binding the
+# worker keeps running and /upload answers 503; uncommenting is the only step
+# needed to turn it on. Files are served back through the worker at /f/<name>;
+# set MEDIA_BASE_URL to switch to a custom domain later.
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "seyran-media"
