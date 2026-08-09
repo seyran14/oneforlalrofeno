@@ -480,6 +480,7 @@ function uploadPage() {
   .bar { height:4px; background:#27272a; border-radius:2px; overflow:hidden; margin-top:18px; display:none }
   .bar div { height:100%; width:0; background:#fff; transition:width .2s }
   .msg { margin-top:18px; font-size:14px; color:#a1a1aa; word-break:break-all }
+  #done { margin-top:24px }
   .hidden { display:none }
   a { color:#fff }
 </style></head><body>
