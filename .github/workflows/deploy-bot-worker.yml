@@ -1,8 +1,9 @@
 name: Deploy bot worker
 
 # Deploys bot-worker/ to Cloudflare Workers whenever its code changes on main,
-# so the bot can be updated without a laptop. Needs one repository secret:
+# so the bot can be updated without a laptop. Repository secrets:
 #   CLOUDFLARE_API_TOKEN  — token with the "Edit Cloudflare Workers" permission
+#   NOTION_TOKEN          — Notion integration token, uploaded as a worker secret
 # The account is pinned in bot-worker/wrangler.toml.
 
 on:
@@ -23,3 +24,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: bot-worker
+          # Pushed to the worker on every deploy, so the two stay in sync.
+          secrets: |
+            NOTION_TOKEN
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
