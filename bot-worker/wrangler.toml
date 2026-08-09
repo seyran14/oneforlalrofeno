@@ -10,3 +10,9 @@ account_id = "02aef6c0e60dadf060f2a695f0161b03"
 #   TELEGRAM_TOKEN   — Telegram bot token
 #   GITHUB_TOKEN     — GitHub token with repo write access
 #   WEBHOOK_SECRET   — random string; also passed to Telegram setWebhook
+#   NOTION_TOKEN     — Notion integration token ("Seyran Website")
+
+# Notion database ids — identifiers, not secrets.
+[vars]
+NOTION_MEMORIES_DB = "31e7fe3896928037bdf5d82c7de3db2a"
+NOTION_MUSIC_DB = "3b67fe38969280248e66c6a5a27cce64"
