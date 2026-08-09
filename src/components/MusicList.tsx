@@ -35,7 +35,9 @@ export default function MusicList({ tracks }: MusicListProps) {
 
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [scrubbing, setScrubbing] = useState(false);
+  // Пока ползунок держат, трек продолжает играть с прежнего места, а шкала и
+  // отсчёт показывают выбранную позицию. Перемотка происходит на отпускании.
+  const [scrubTime, setScrubTime] = useState<number | null>(null);
 
   const play = (track: Track) => {
     const audio = audioRef.current;
@@ -57,6 +59,7 @@ export default function MusicList({ tracks }: MusicListProps) {
     setCurrentId(track.id);
     setDuration(0);
     setCurrentTime(0);
+    setScrubTime(null);
     audio.src = track.audioUrl;
     audio.currentTime = 0;
     audio.play().catch(() => {
@@ -65,18 +68,29 @@ export default function MusicList({ tracks }: MusicListProps) {
     });
   };
 
-  const seek = (clientX: number) => {
+  /** Позиция под пальцем — только в состояние, звук не трогаем. */
+  const trackPointer = (clientX: number) => {
     const el = barRef.current;
-    const audio = audioRef.current;
-    if (!el || !audio || !duration) return;
+    if (!el || !duration) return;
 
     const rect = el.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    audio.currentTime = ratio * duration;
-    setCurrentTime(ratio * duration);
+    setScrubTime(ratio * duration);
   };
 
-  const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
+  /** Отпустили — вот теперь перематываем. */
+  const commitScrub = () => {
+    const audio = audioRef.current;
+    if (audio && scrubTime !== null) {
+      audio.currentTime = scrubTime;
+      setCurrentTime(scrubTime);
+    }
+    setScrubTime(null);
+  };
+
+  const scrubbing = scrubTime !== null;
+  const displayTime = scrubTime ?? currentTime;
+  const progress = duration > 0 ? Math.min(1, displayTime / duration) : 0;
 
   return (
     <div className="border-t border-zinc-800/50">
@@ -113,15 +127,14 @@ export default function MusicList({ tracks }: MusicListProps) {
                       aria-label={`Seek ${track.title}`}
                       aria-valuemin={0}
                       aria-valuemax={Math.round(duration)}
-                      aria-valuenow={Math.round(currentTime)}
+                      aria-valuenow={Math.round(displayTime)}
                       onPointerDown={(e) => {
                         e.currentTarget.setPointerCapture(e.pointerId);
-                        setScrubbing(true);
-                        seek(e.clientX);
+                        trackPointer(e.clientX);
                       }}
-                      onPointerMove={(e) => scrubbing && seek(e.clientX)}
-                      onPointerUp={() => setScrubbing(false)}
-                      onPointerCancel={() => setScrubbing(false)}
+                      onPointerMove={(e) => scrubbing && trackPointer(e.clientX)}
+                      onPointerUp={commitScrub}
+                      onPointerCancel={() => setScrubTime(null)}
                       onKeyDown={(e) => {
                         const audio = audioRef.current;
                         if (!audio || !duration) return;
@@ -176,7 +189,7 @@ export default function MusicList({ tracks }: MusicListProps) {
                   transition={{ duration: 0.18 }}
                   className="shrink-0 font-mono text-xs text-zinc-500 tabular-nums"
                 >
-                  −{formatTime(duration - currentTime)}
+                  −{formatTime(duration - displayTime)}
                 </motion.time>
               )}
             </AnimatePresence>
@@ -212,9 +225,7 @@ export default function MusicList({ tracks }: MusicListProps) {
         onPause={() => setIsPlaying(false)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
         onDurationChange={(e) => setDuration(e.currentTarget.duration || 0)}
-        onTimeUpdate={(e) => {
-          if (!scrubbing) setCurrentTime(e.currentTarget.currentTime);
-        }}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onEnded={() => {
           setIsPlaying(false);
           setCurrentId(null);
