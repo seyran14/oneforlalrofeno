@@ -4,3 +4,6 @@
 # Cloudflare Workers (bot) local state & secrets
 bot-worker/.dev.vars
 .wrangler/
+
+# Build output
+dist/
