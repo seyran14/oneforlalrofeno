@@ -4,6 +4,7 @@ name: Deploy bot worker
 # so the bot can be updated without a laptop. Repository secrets:
 #   CLOUDFLARE_API_TOKEN  — token with the "Edit Cloudflare Workers" permission
 #   NOTION_TOKEN          — Notion integration token, uploaded as a worker secret
+#   UPLOAD_SECRET         — key for the /upload page, uploaded as a worker secret
 # The account is pinned in bot-worker/wrangler.toml.
 
 on:
@@ -20,6 +21,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Idempotent: fails harmlessly once the bucket exists.
+      - name: Ensure the R2 bucket exists
+        continue-on-error: true
+        run: npx --yes wrangler@4 r2 bucket create seyran-media
+        working-directory: bot-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -27,5 +36,7 @@ jobs:
           # Pushed to the worker on every deploy, so the two stay in sync.
           secrets: |
             NOTION_TOKEN
+            UPLOAD_SECRET
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          UPLOAD_SECRET: ${{ secrets.UPLOAD_SECRET }}

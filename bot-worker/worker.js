@@ -39,6 +39,18 @@ const MIME_TO_EXT = {
 
 export default {
   async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // Big mixes go straight to R2: too large for the Bot API (20 MB) and for
+    // Cloudflare Pages (25 MiB per file), and they have no business sitting
+    // in the git history either.
+    if (url.pathname === '/upload') {
+      return handleUpload(request, env, url);
+    }
+    if (url.pathname.startsWith('/f/')) {
+      return serveFromR2(request, env, decodeURIComponent(url.pathname.slice(3)));
+    }
+
     // Health check / anything that isn't a Telegram webhook POST.
     if (request.method !== 'POST') {
       return new Response('🤖 Bot worker is running', { status: 200 });
@@ -128,6 +140,11 @@ async function handleUpdate(update, env) {
   }
 
   if (msg.text) {
+    const bigFiles =
+      env.UPLOAD_SECRET && env.WORKER_URL
+        ? `\n\n📦 Больше 20 МБ (длинные миксы) — через страницу загрузки, файл уйдёт в R2:\n${env.WORKER_URL}/upload?key=${env.UPLOAD_SECRET}`
+        : '';
+
     await tg(token, 'sendMessage', {
       chat_id: chatId,
       text:
@@ -136,7 +153,9 @@ async function handleUpdate(update, env) {
         'The caption becomes the title and the filename, and the row is\n' +
         'published right away. Sending the same caption again replaces the\n' +
         'file and updates the row.\n\n' +
-        'Audio: mp3, m4a, wav, flac, ogg/opus. Telegram caps uploads at 20 MB.',
+        'Audio: mp3, m4a, wav, flac, ogg/opus. Telegram caps uploads at 20 MB.' +
+        bigFiles,
+      disable_web_page_preview: true,
     });
   }
 }
@@ -189,7 +208,12 @@ async function publish(env, chatId, opts) {
   try {
     await commitTelegramFile(env, opts);
   } catch (err) {
-    await tg(token, 'sendMessage', { chat_id: chatId, text: `❌ Error: ${err.message}` });
+    let text = `❌ Error: ${err.message}`;
+    // Слишком большой файл — не тупик: есть страница загрузки в обход Телеграма.
+    if (/larger than 20 MB/.test(err.message) && env.UPLOAD_SECRET && env.WORKER_URL) {
+      text += `\n\nЗалей через страницу загрузки:\n${env.WORKER_URL}/upload?key=${env.UPLOAD_SECRET}`;
+    }
+    await tg(token, 'sendMessage', { chat_id: chatId, text, disable_web_page_preview: true });
     return;
   }
 
@@ -318,6 +342,188 @@ async function notion(env, path, method, body) {
     throw new Error(data.message || `Notion ${resp.status}`);
   }
   return data;
+}
+
+/**
+ * Upload endpoint for files the bot cannot handle: an hour-long mix is past
+ * the Bot API's 20 MB download ceiling, so the browser sends it here instead.
+ *
+ * GET  /upload?key=… → the form
+ * PUT  /upload?key=…&title=…&filename=… → raw file body, streamed into R2
+ */
+async function handleUpload(request, env, url) {
+  if (!env.UPLOAD_SECRET) {
+    return new Response('Uploads are not configured (UPLOAD_SECRET is missing)', { status: 503 });
+  }
+  if (url.searchParams.get('key') !== env.UPLOAD_SECRET) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  if (!env.MEDIA) {
+    return new Response('Uploads are not configured (no R2 bucket bound)', { status: 503 });
+  }
+
+  if (request.method === 'GET') {
+    return new Response(uploadPage(), {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
+  if (request.method !== 'PUT') {
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  const title = (url.searchParams.get('title') || '').trim();
+  const filename = url.searchParams.get('filename') || '';
+  if (!title) {
+    return json({ error: 'Название не заполнено' }, 400);
+  }
+  if (!request.body) {
+    return json({ error: 'Пустой файл' }, 400);
+  }
+
+  const ext = fileExtension(filename) || 'mp3';
+  const objectKey = slugify(title) + '.' + ext;
+
+  try {
+    // Стримом, а не в память: файл может быть в сотню мегабайт.
+    await env.MEDIA.put(objectKey, request.body, {
+      httpMetadata: {
+        contentType: request.headers.get('content-type') || 'application/octet-stream',
+      },
+    });
+  } catch (err) {
+    return json({ error: `R2: ${err.message}` }, 500);
+  }
+
+  const publicUrl = `${mediaBaseUrl(env, url)}/${encodeURIComponent(objectKey)}`;
+
+  let notionLine = 'Строку в Notion добавь вручную (NOTION_TOKEN не задан).';
+  if (env.NOTION_TOKEN && env.NOTION_MUSIC_DB) {
+    try {
+      const action = await upsertNotionRow(env, {
+        databaseId: env.NOTION_MUSIC_DB,
+        urlProperty: { name: 'Audio URL', type: 'url' },
+        title,
+        publicUrl,
+      });
+      notionLine = action === 'updated'
+        ? `Notion: строка «${title}» обновлена`
+        : `Notion: строка «${title}» создана, Published ✓`;
+    } catch (err) {
+      notionLine = `Загружено, но Notion не ответил: ${err.message}`;
+    }
+  }
+
+  return json({ url: publicUrl, notion: notionLine });
+}
+
+/** Отдаём файл из R2 с поддержкой Range — без неё длинное аудио не перематывается. */
+async function serveFromR2(request, env, key) {
+  if (!env.MEDIA) return new Response('R2 is not configured', { status: 503 });
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  const object = await env.MEDIA.get(key, { range: request.headers });
+  if (!object) return new Response('Not found', { status: 404 });
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('etag', object.httpEtag);
+  headers.set('accept-ranges', 'bytes');
+  headers.set('cache-control', 'public, max-age=86400');
+  headers.set('access-control-allow-origin', '*');
+
+  let status = 200;
+  if (object.range && 'offset' in object.range) {
+    const start = object.range.offset;
+    const end = start + object.range.length - 1;
+    headers.set('content-range', `bytes ${start}-${end}/${object.size}`);
+    status = 206;
+  }
+
+  return new Response(request.method === 'HEAD' ? null : object.body, { status, headers });
+}
+
+function mediaBaseUrl(env, url) {
+  return env.MEDIA_BASE_URL || `${url.origin}/f`;
+}
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+  });
+}
+
+function uploadPage() {
+  return `<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Загрузка трека</title>
+<style>
+  :root { color-scheme: dark }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:#000; color:#fff; font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:24px }
+  .card { width:100%; max-width:420px }
+  h1 { font-size:28px; margin:0 0 24px }
+  label { display:block; font-size:13px; color:#a1a1aa; margin:0 0 6px }
+  input[type=text], input[type=file] { width:100%; box-sizing:border-box; background:#09090b; color:#fff;
+         border:1px solid #3f3f46; border-radius:8px; padding:12px; font-size:16px; margin-bottom:18px }
+  button { width:100%; padding:14px; border:0; border-radius:8px; background:#fff; color:#000;
+         font-size:16px; font-weight:600; cursor:pointer }
+  button:disabled { background:#3f3f46; color:#a1a1aa; cursor:default }
+  .bar { height:4px; background:#27272a; border-radius:2px; overflow:hidden; margin-top:18px; display:none }
+  .bar div { height:100%; width:0; background:#fff; transition:width .2s }
+  .msg { margin-top:18px; font-size:14px; color:#a1a1aa; word-break:break-all }
+  a { color:#fff }
+</style></head><body>
+<div class="card">
+  <h1>Новый трек</h1>
+  <label for="title">Название</label>
+  <input id="title" type="text" placeholder="Например: Sunday Mix" autocomplete="off">
+  <label for="file">Файл</label>
+  <input id="file" type="file" accept="audio/*">
+  <button id="go">Загрузить</button>
+  <div class="bar"><div id="fill"></div></div>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  $('go').onclick = () => {
+    const title = $('title').value.trim();
+    const file = $('file').files[0];
+    if (!title || !file) { $('msg').textContent = 'Заполни название и выбери файл.'; return; }
+
+    const url = '/upload' + location.search
+      + '&title=' + encodeURIComponent(title)
+      + '&filename=' + encodeURIComponent(file.name);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    $('go').disabled = true;
+    document.querySelector('.bar').style.display = 'block';
+    $('msg').textContent = 'Загружаю…';
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) $('fill').style.width = Math.round(e.loaded / e.total * 100) + '%';
+    };
+    xhr.onload = () => {
+      $('go').disabled = false;
+      try {
+        const r = JSON.parse(xhr.responseText);
+        $('msg').innerHTML = r.error
+          ? '❌ ' + r.error
+          : '✅ ' + r.notion + '<br><a href="' + r.url + '">' + r.url + '</a>';
+      } catch { $('msg').textContent = 'Ответ сервера: ' + xhr.status; }
+    };
+    xhr.onerror = () => { $('go').disabled = false; $('msg').textContent = 'Сеть отвалилась, попробуй ещё раз.'; };
+    xhr.send(file);
+  };
+</script>
+</body></html>`;
 }
 
 async function tg(token, method, body) {

@@ -11,8 +11,16 @@ account_id = "02aef6c0e60dadf060f2a695f0161b03"
 #   GITHUB_TOKEN     — GitHub token with repo write access
 #   WEBHOOK_SECRET   — random string; also passed to Telegram setWebhook
 #   NOTION_TOKEN     — Notion integration token ("Seyran Website")
+#   UPLOAD_SECRET    — key in the /upload link; anyone with it can upload
 
 # Notion database ids — identifiers, not secrets.
 [vars]
 NOTION_MEMORIES_DB = "31e7fe3896928037bdf5d82c7de3db2a"
 NOTION_MUSIC_DB = "3b67fe38969280248e66c6a5a27cce64"
+WORKER_URL = "https://seyran-telegram-bot.seyrans240.workers.dev"
+
+# Long mixes live here instead of the git repo. Files are served back through
+# the worker at /f/<name>; set MEDIA_BASE_URL to switch to a custom domain.
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "seyran-media"
