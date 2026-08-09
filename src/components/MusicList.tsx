@@ -167,7 +167,6 @@ export default function MusicList({ tracks }: MusicListProps) {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
                     onClick={() => play(track)}
-                    aria-label={`Play ${track.title}`}
                     className="absolute inset-x-0 text-left truncate text-lg text-zinc-400 hover:text-white transition-colors duration-200"
                   >
                     {track.title}
