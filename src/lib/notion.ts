@@ -1,5 +1,6 @@
 import { Client } from '@notionhq/client';
 import { imageSize } from './imageSize';
+import { qualifyEmoji } from './emoji';
 
 // Типы для контента
 export interface NotionPost {
@@ -88,7 +89,7 @@ export async function getPostsFromNotion(): Promise<NotionPost[]> {
       const properties = page.properties;
       return {
         id: page.id,
-        title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
+        title: qualifyEmoji(properties.Title?.title?.[0]?.plain_text || 'Untitled'),
         date: properties.Date?.date?.start ? formatDate(properties.Date.date.start) : 'No date',
         isoDate: properties.Date?.date?.start || '',
         content: properties.Content?.rich_text?.[0]?.plain_text || '',
@@ -128,7 +129,7 @@ export async function getThoughtsFromNotion(): Promise<NotionThought[]> {
       const properties = page.properties;
       return {
         id: page.id,
-        title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
+        title: qualifyEmoji(properties.Title?.title?.[0]?.plain_text || 'Untitled'),
         date: properties.Date?.date?.start ? formatDate(properties.Date.date.start) : 'No date',
         content: properties.Content?.rich_text?.[0]?.plain_text || '',
         published: properties.Published?.checkbox || false,
@@ -188,7 +189,7 @@ export async function getMemoriesFromNotion(): Promise<NotionMemory[]> {
       
       return {
         id: page.id,
-        title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
+        title: qualifyEmoji(properties.Title?.title?.[0]?.plain_text || 'Untitled'),
         date: properties.Date?.date?.start ? formatDate(properties.Date.date.start) : 'No date',
         photos: photoUrls.map(withSize),
         published: properties.Published?.checkbox || false,
@@ -237,7 +238,7 @@ export async function getTracksFromNotion(): Promise<NotionTrack[]> {
 
       return {
         id: page.id,
-        title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
+        title: qualifyEmoji(properties.Title?.title?.[0]?.plain_text || 'Untitled'),
         audioUrl,
         order: typeof properties.Number?.number === 'number' ? properties.Number.number : index,
         published: properties.Published?.checkbox || false,
