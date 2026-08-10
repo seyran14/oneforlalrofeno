@@ -19,9 +19,11 @@ account_id = "02aef6c0e60dadf060f2a695f0161b03"
 NOTION_MEMORIES_DB = "31e7fe3896928037bdf5d82c7de3db2a"
 NOTION_MUSIC_DB = "3b67fe38969280248e66c6a5a27cce64"
 WORKER_URL = "https://seyran-telegram-bot.seyrans240.workers.dev"
+MEDIA_BASE_URL = "https://files.seyran.cc"
 
-# Long mixes live here instead of the git repo. Files are served back through
-# the worker at /f/<name>; set MEDIA_BASE_URL to switch to a custom domain.
+# All audio lives here instead of the git repo, served straight off the bucket
+# at files.seyran.cc. The worker's own /f/<name> route stays as a fallback for
+# links handed out before the domain existed.
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "seyran-media"

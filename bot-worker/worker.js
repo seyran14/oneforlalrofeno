@@ -1,8 +1,8 @@
 // Telegram bot on Cloudflare Workers (webhook mode).
 //
 // Send the bot a photo or an audio track with a caption. The caption becomes
-// the filename and the title; the file is committed to the site repo (photos
-// to public/images/, tracks to public/audio/) and a published row is created
+// the filename and the title; photos are committed to the site repo under
+// public/images/, audio goes to the R2 bucket, and a published row is created
 // in the matching Notion database. Sending the same caption again overwrites
 // the file and updates the existing row instead of adding a duplicate.
 //
@@ -12,7 +12,6 @@
 const GITHUB_OWNER = 'seyran14';
 const GITHUB_REPO = 'oneforlalrofeno';
 const IMAGES_PATH = 'public/images';
-const AUDIO_PATH = 'public/audio';
 const BRANCH = 'main';
 const SITE_URL = 'https://seyran.cc';
 
@@ -125,10 +124,11 @@ async function handleUpdate(update, env) {
 
     await publish(env, chatId, {
       fileId: audio.file_id,
-      path: `${AUDIO_PATH}/${filename}`,
+      storage: 'r2',
+      objectKey: filename,
+      contentType: audio.mime_type,
       filename,
-      commitMessage: `add audio: ${filename}`,
-      publicUrl: `${SITE_URL}/audio/${filename}`,
+      publicUrl: `${mediaBaseUrl(env)}/${encodeURIComponent(filename)}`,
       title: caption,
       databaseId: env.NOTION_MUSIC_DB,
       urlProperty: { name: 'Audio URL', type: 'url' },
@@ -149,7 +149,7 @@ async function handleUpdate(update, env) {
       chat_id: chatId,
       text:
         '📸 Send a photo with a caption → /images/ + a row in Memories.\n' +
-        '🎵 Send a track with a caption → /audio/ + a row in Music.\n\n' +
+        '🎵 Send a track with a caption → R2 + a row in Music.\n\n' +
         'The caption becomes the title and the filename, and the row is\n' +
         'published right away. Sending the same caption again replaces the\n' +
         'file and updates the row.\n\n' +
@@ -208,18 +208,23 @@ function slugify(text, fallback = '') {
 }
 
 /**
- * Commit the file to the repo, then publish it in Notion.
+ * Store the file, then publish it in Notion.
  *
- * The file goes first: a Notion row is only worth having once the URL it
- * points at actually exists. The commit starts the Pages build, which reads
- * Notion a minute later, so the row is always in place before it is queried.
+ * Photos go to the repo, audio to R2 — a track has no business in git, and
+ * Pages refuses to serve anything over 25 MiB anyway. The file is stored
+ * first: a Notion row is only worth having once the URL it points at
+ * actually exists.
  */
 async function publish(env, chatId, opts) {
   const token = env.TELEGRAM_TOKEN;
   await tg(token, 'sendMessage', { chat_id: chatId, text: `Uploading ${opts.filename}...` });
 
   try {
-    await commitTelegramFile(env, opts);
+    if (opts.storage === 'r2') {
+      await storeTelegramFileInR2(env, opts);
+    } else {
+      await commitTelegramFile(env, opts);
+    }
   } catch (err) {
     let text = `❌ Error: ${err.message}`;
     // A file that is too big is not a dead end — the upload page bypasses Telegram.
@@ -245,15 +250,18 @@ async function publish(env, chatId, opts) {
     }
   }
 
+  // Коммит запускает сборку сам; для R2 её надо позвать отдельно
+  const rebuildLine = opts.storage === 'r2' ? await triggerRebuild(env) : '';
+
   await tg(token, 'sendMessage', {
     chat_id: chatId,
-    text: `✅ ${opts.publicUrl}\n\n${notionLine}${opts.note}`,
+    text: `✅ ${opts.publicUrl}\n\n${notionLine}${rebuildLine}${opts.note}`,
     disable_web_page_preview: true,
   });
 }
 
-/** Download the file from Telegram and commit it to the repo. */
-async function commitTelegramFile(env, { fileId, path, commitMessage }) {
+/** Ask Telegram where the file lives and start downloading it. */
+async function fetchTelegramFile(env, fileId) {
   const token = env.TELEGRAM_TOKEN;
 
   const fileInfo = await tg(token, 'getFile', { file_id: fileId });
@@ -267,10 +275,22 @@ async function commitTelegramFile(env, { fileId, path, commitMessage }) {
     );
   }
 
-  const fileUrl = `https://api.telegram.org/file/bot${token}/${tgFilePath}`;
-  const fileResp = await fetch(fileUrl);
-  if (!fileResp.ok) throw new Error(`Telegram file download ${fileResp.status}`);
+  const resp = await fetch(`https://api.telegram.org/file/bot${token}/${tgFilePath}`);
+  if (!resp.ok) throw new Error(`Telegram file download ${resp.status}`);
+  return resp;
+}
 
+/** Tracks live in R2 next to the long mixes, never in the repo. */
+async function storeTelegramFileInR2(env, { fileId, objectKey, contentType }) {
+  const resp = await fetchTelegramFile(env, fileId);
+  await env.MEDIA.put(objectKey, resp.body, {
+    httpMetadata: { contentType: contentType || 'application/octet-stream' },
+  });
+}
+
+/** Photos are committed to the repo, which is also what triggers a build. */
+async function commitTelegramFile(env, { fileId, path, commitMessage }) {
+  const fileResp = await fetchTelegramFile(env, fileId);
   const base64 = arrayBufferToBase64(await fileResp.arrayBuffer());
 
   // Look up the existing file's sha (needed to overwrite it).
@@ -479,7 +499,8 @@ async function serveFromR2(request, env, key) {
 }
 
 function mediaBaseUrl(env, url) {
-  return env.MEDIA_BASE_URL || `${url.origin}/f`;
+  if (env.MEDIA_BASE_URL) return env.MEDIA_BASE_URL.replace(/\/$/, '');
+  return url ? `${url.origin}/f` : `${env.WORKER_URL}/f`;
 }
 
 function json(body, status = 200) {

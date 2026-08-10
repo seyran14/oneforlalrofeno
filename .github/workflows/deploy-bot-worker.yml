@@ -5,6 +5,7 @@ name: Deploy bot worker
 #   CLOUDFLARE_API_TOKEN  — token with the "Edit Cloudflare Workers" permission
 #   NOTION_TOKEN          — Notion integration token, uploaded as a worker secret
 #   UPLOAD_SECRET         — key for the /upload page, uploaded as a worker secret
+#   PAGES_DEPLOY_HOOK     — Pages deploy hook, uploaded as a worker secret
 # The account is pinned in bot-worker/wrangler.toml.
 
 on:
@@ -38,6 +39,8 @@ jobs:
           secrets: |
             NOTION_TOKEN
             UPLOAD_SECRET
+            PAGES_DEPLOY_HOOK
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           UPLOAD_SECRET: ${{ secrets.UPLOAD_SECRET }}
+          PAGES_DEPLOY_HOOK: ${{ secrets.PAGES_DEPLOY_HOOK }}

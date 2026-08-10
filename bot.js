@@ -1,3 +1,7 @@
+// Локальная polling-версия бота. Боевой бот — bot-worker/worker.js на
+// Cloudflare Workers; там же живёт всё, что требует привязок к R2, поэтому
+// здесь треки по-прежнему коммитятся в репозиторий. Запускать эти две версии
+// одновременно нельзя: вебхук и polling исключают друг друга.
 import { Telegraf } from 'telegraf';
 import { Octokit } from '@octokit/rest';
 import https from 'https';
