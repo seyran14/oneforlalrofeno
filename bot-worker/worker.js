@@ -101,7 +101,7 @@ async function handleUpdate(update, env) {
       path: `${IMAGES_PATH}/${filename}`,
       filename,
       commitMessage: `add image: ${filename}`,
-      publicUrl: `${SITE_URL}/images/${filename}`,
+      publicUrl: `${SITE_URL}/images/${encodeURIComponent(filename)}`,
       title: caption,
       databaseId: env.NOTION_MEMORIES_DB,
       urlProperty: { name: 'Photo URL', type: 'rich_text' },
@@ -191,20 +191,33 @@ function fileExtension(name) {
 }
 
 /**
- * Filename from a caption. Runs of unsupported characters collapse into one
- * dash and the edges are trimmed, so "KickStart my ❤️‍🔥" is not left with a
- * tail of them. A caption that is only emoji or Cyrillic slugifies to nothing
- * at all — those used to collide on a single "-.jpg" and overwrite each
- * other, so they fall back to the original filename.
+ * Filename from a caption. Emoji, Cyrillic and the rest of Unicode survive —
+ * a title of "⚡️" should stay "⚡️" in the URL too, percent-encoded on the
+ * wire. Only what genuinely breaks paths and URLs is replaced: separators,
+ * control characters and the reserved punctuation. A caption made entirely
+ * of those falls back to the uploaded file's own name.
  */
 function slugify(text, fallback = '') {
-  const clean = (s) => s.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^[-.]+|-+$/g, '');
+  const clean = (s) =>
+    s
+      .normalize('NFC')
+      .replace(/[\u0000-\u001f\u007f]+/g, '')
+      .replace(/[/\\?#%:*"<>|]+/g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^[-.]+|[-.]+$/g, '')
+      .slice(0, 80);
 
   return (
     clean(text) ||
     clean(fallback.replace(/\.[^.]*$/, '')) ||
     `file-${Date.now()}`
   );
+}
+
+/** GitHub wants the path percent-encoded, but the slashes left alone. */
+function encodePath(path) {
+  return path.split('/').map(encodeURIComponent).join('/');
 }
 
 /**
@@ -296,7 +309,7 @@ async function commitTelegramFile(env, { fileId, path, commitMessage }) {
   // Look up the existing file's sha (needed to overwrite it).
   let sha;
   const getResp = await fetch(
-    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${BRANCH}`,
+    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodePath(path)}?ref=${BRANCH}`,
     { headers: ghHeaders(env) }
   );
   if (getResp.ok) {
@@ -304,7 +317,7 @@ async function commitTelegramFile(env, { fileId, path, commitMessage }) {
   }
 
   const putResp = await fetch(
-    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`,
+    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodePath(path)}`,
     {
       method: 'PUT',
       headers: ghHeaders(env),
