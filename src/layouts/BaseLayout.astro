@@ -30,5 +30,14 @@ const {
   </head>
   <body>
     <slot />
+
+    <!-- Cloudflare Web Analytics. is:inline — иначе Astro утащит тег в свою
+         сборку и потеряет data-cf-beacon, без которого маячок бесполезен -->
+    <script
+      is:inline
+      type="module"
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "0ed6eb1efb8f4ade8f3de186636ca3ae"}'
+    ></script>
   </body>
 </html>
