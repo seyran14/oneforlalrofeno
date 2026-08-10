@@ -429,7 +429,25 @@ async function handleUpload(request, env, url) {
     }
   }
 
-  return json({ url: publicUrl, notion: notionLine });
+  return json({ url: publicUrl, notion: notionLine + (await triggerRebuild(env)) });
+}
+
+/**
+ * Файлы из R2 не проходят через git, а сайт статический и читает Notion
+ * только при сборке — значит, её надо запустить самим. Для файлов, которые
+ * коммитятся в репозиторий, этого не нужно: сборку запускает сам коммит.
+ */
+async function triggerRebuild(env) {
+  if (!env.PAGES_DEPLOY_HOOK) {
+    return '\nPress "Retry deployment" in Cloudflare Pages to see it on the site.';
+  }
+
+  try {
+    const resp = await fetch(env.PAGES_DEPLOY_HOOK, { method: 'POST' });
+    return resp.ok ? '\nSite is rebuilding — live in a minute.' : `\nRebuild hook answered ${resp.status}.`;
+  } catch (err) {
+    return `\nRebuild hook failed: ${err.message}`;
+  }
 }
 
 /** Serve from R2 with Range support — long audio cannot be seeked without it. */

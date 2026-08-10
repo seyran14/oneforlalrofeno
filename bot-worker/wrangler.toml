@@ -12,6 +12,7 @@ account_id = "02aef6c0e60dadf060f2a695f0161b03"
 #   WEBHOOK_SECRET   — random string; also passed to Telegram setWebhook
 #   NOTION_TOKEN     — Notion integration token ("Seyran Website")
 #   UPLOAD_SECRET    — key in the /upload link; anyone with it can upload
+#   PAGES_DEPLOY_HOOK — Cloudflare Pages deploy hook, fired after an R2 upload
 
 # Notion database ids — identifiers, not secrets.
 [vars]
