@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header';
 import Post from '../components/Post';
-import { getPostsFromNotion } from '../lib/notion';
+import { getPostsFromNotion, postSlug } from '../lib/notion';
 
 const posts = await getPostsFromNotion();
 ---
@@ -27,6 +27,7 @@ const posts = await getPostsFromNotion();
           posts.map((post) => (
             <Post 
               client:load
+              id={postSlug(post.title)}
               title={post.title}
               date={post.date}
             >

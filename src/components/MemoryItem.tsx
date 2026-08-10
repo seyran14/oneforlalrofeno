@@ -2,13 +2,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
 
+interface Photo {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
 interface MemoryItemProps {
   title: string;
   date: string;
-  photoUrls: string[];
+  photos: Photo[];
 }
 
-export default function MemoryItem({ title, date, photoUrls }: MemoryItemProps) {
+export default function MemoryItem({ title, date, photos }: MemoryItemProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   
@@ -16,7 +22,7 @@ export default function MemoryItem({ title, date, photoUrls }: MemoryItemProps) 
   const [direction, setDirection] = useState(0);
   
   // Если нет фото, не показываем компонент
-  if (!photoUrls || photoUrls.length === 0) {
+  if (!photos || photos.length === 0) {
     return null;
   }
 
@@ -27,7 +33,7 @@ export default function MemoryItem({ title, date, photoUrls }: MemoryItemProps) 
       // Свайп вправо - предыдущее фото
       setDirection(-1);
       setCurrentIndex(currentIndex - 1);
-    } else if (info.offset.x < -threshold && currentIndex < photoUrls.length - 1) {
+    } else if (info.offset.x < -threshold && currentIndex < photos.length - 1) {
       // Свайп влево - следующее фото
       setDirection(1);
       setCurrentIndex(currentIndex + 1);
@@ -91,18 +97,21 @@ export default function MemoryItem({ title, date, photoUrls }: MemoryItemProps) 
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
               onDragEnd={handleDragEnd}
-              src={photoUrls[currentIndex]}
+              src={photos[currentIndex].url}
               alt={`${title} - ${currentIndex + 1}`}
+              width={photos[currentIndex].width}
+              height={photos[currentIndex].height}
               className="w-full h-auto object-contain cursor-grab active:cursor-grabbing select-none"
               loading="lazy"
+              decoding="async"
             />
           </AnimatePresence>
         </div>
 
         {/* Dots Indicator - только если больше 1 фото */}
-        {photoUrls.length > 1 && (
+        {photos.length > 1 && (
           <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
-            {photoUrls.map((_, index) => (
+            {photos.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}

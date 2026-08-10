@@ -2,19 +2,21 @@ import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 
 interface PostProps {
+  id?: string;
   title: string;
   date: string;
   children: ReactNode;
 }
 
-export default function Post({ title, date, children }: PostProps) {
+export default function Post({ id, title, date, children }: PostProps) {
   return (
     <motion.article
+      id={id}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="mb-16 last:mb-0"
+      className="mb-16 last:mb-0 scroll-mt-8"
     >
       {/* Post Header */}
       <div className="mb-6 space-y-2">

@@ -1,10 +1,12 @@
 import { Client } from '@notionhq/client';
+import { imageSize } from './imageSize';
 
 // Типы для контента
 export interface NotionPost {
   id: string;
   title: string;
   date: string;
+  isoDate: string;   // как есть из Notion — для RSS
   content: string;
   published: boolean;
 }
@@ -17,11 +19,17 @@ export interface NotionThought {
   published: boolean;
 }
 
+export interface NotionPhoto {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
 export interface NotionMemory {
   id: string;
   title: string;
   date: string;
-  photoUrls: string[];  // Изменено: теперь массив ссылок
+  photos: NotionPhoto[];
   published: boolean;
 }
 
@@ -43,6 +51,17 @@ const thoughtsDbId = import.meta.env.NOTION_THOUGHTS_DB;
 // База Memories — раньше называлась Media, старое имя переменной всё ещё работает
 const memoriesDbId = import.meta.env.NOTION_MEMORIES_DB || import.meta.env.NOTION_MEDIA_DB;
 const musicDbId = import.meta.env.NOTION_MUSIC_DB;
+
+/**
+ * Якорь поста: отдельных страниц у постов нет, поэтому RSS ссылается на
+ * /posts/#<слаг>, а сам пост несёт этот id.
+ */
+export function postSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'post';
+}
 
 /**
  * Получить все опубликованные посты из Notion
@@ -71,6 +90,7 @@ export async function getPostsFromNotion(): Promise<NotionPost[]> {
         id: page.id,
         title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
         date: properties.Date?.date?.start ? formatDate(properties.Date.date.start) : 'No date',
+        isoDate: properties.Date?.date?.start || '',
         content: properties.Content?.rich_text?.[0]?.plain_text || '',
         published: properties.Published?.checkbox || false,
       };
@@ -170,7 +190,7 @@ export async function getMemoriesFromNotion(): Promise<NotionMemory[]> {
         id: page.id,
         title: properties.Title?.title?.[0]?.plain_text || 'Untitled',
         date: properties.Date?.date?.start ? formatDate(properties.Date.date.start) : 'No date',
-        photoUrls: photoUrls,
+        photos: photoUrls.map(withSize),
         published: properties.Published?.checkbox || false,
       };
     });
@@ -232,6 +252,19 @@ export async function getTracksFromNotion(): Promise<NotionTrack[]> {
     console.error('Error fetching tracks from Notion:', error);
     return [];
   }
+}
+
+/**
+ * Дополнить ссылку размерами файла из public/images — с ними браузер занимает
+ * место под фотографию заранее и страница не прыгает по мере загрузки.
+ * Для картинок с других доменов размеры остаются неизвестными.
+ */
+function withSize(url: string): NotionPhoto {
+  const match = /\/images\/([^/?#]+)$/.exec(url);
+  if (!match) return { url };
+
+  const size = imageSize(`public/images/${decodeURIComponent(match[1])}`);
+  return size ? { url, width: size.width, height: size.height } : { url };
 }
 
 /**
