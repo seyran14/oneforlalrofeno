@@ -27,7 +27,6 @@ function formatTime(seconds: number) {
 export default function MusicList({ tracks }: MusicListProps) {
   // Один общий <audio> на весь список — значит одновременно играет только один трек
   const audioRef = useRef<HTMLAudioElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
 
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -68,16 +67,6 @@ export default function MusicList({ tracks }: MusicListProps) {
     });
   };
 
-  /** Позиция под пальцем — только в состояние, звук не трогаем. */
-  const trackPointer = (clientX: number) => {
-    const el = barRef.current;
-    if (!el || !duration) return;
-
-    const rect = el.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    setScrubTime(ratio * duration);
-  };
-
   /** Отпустили — вот теперь перематываем. */
   const commitScrub = () => {
     const audio = audioRef.current;
@@ -110,8 +99,11 @@ export default function MusicList({ tracks }: MusicListProps) {
             {/* Название уезжает вверх, шкала приходит снизу — высота фиксирована,
                 поэтому строка при этом не дёргается */}
             <div className="relative flex-1 min-w-0 h-7 flex items-center">
-              <AnimatePresence initial={false} mode="wait">
-                {isCurrent ? (
+              {/* Без mode="wait": название и шкала расходятся одновременно.
+                  Последовательный обмен подвисал, если вкладка уходила в фон
+                  посреди анимации, и шкала не появлялась вообще */}
+              <AnimatePresence initial={false}>
+                {isActive ? (
                   <motion.div
                     key="bar"
                     initial={{ opacity: 0, y: 10 }}
@@ -120,33 +112,10 @@ export default function MusicList({ tracks }: MusicListProps) {
                     transition={{ duration: 0.18, ease: 'easeOut' }}
                     className="absolute inset-x-0"
                   >
-                    <div
-                      ref={barRef}
-                      role="slider"
-                      tabIndex={0}
-                      aria-label={`Seek ${track.title}`}
-                      aria-valuemin={0}
-                      aria-valuemax={Math.round(duration)}
-                      aria-valuenow={Math.round(displayTime)}
-                      onPointerDown={(e) => {
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        trackPointer(e.clientX);
-                      }}
-                      onPointerMove={(e) => scrubbing && trackPointer(e.clientX)}
-                      onPointerUp={commitScrub}
-                      onPointerCancel={() => setScrubTime(null)}
-                      onKeyDown={(e) => {
-                        const audio = audioRef.current;
-                        if (!audio || !duration) return;
-                        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                          e.preventDefault();
-                          const step = e.key === 'ArrowRight' ? 5 : -5;
-                          audio.currentTime = Math.min(duration, Math.max(0, audio.currentTime + step));
-                          setCurrentTime(audio.currentTime);
-                        }
-                      }}
-                      className="group/bar py-2.5 -my-2.5 cursor-pointer touch-none select-none"
-                    >
+                    {/* Рисуем шкалу сами, а тянет её невидимый нативный range:
+                        он умеет и мышь, и палец, и клавиатуру без ручной возни
+                        с pointer-событиями, на которой ломался тач */}
+                    <div className="group/bar relative py-2.5 -my-2.5">
                       <div
                         className={`rounded-full bg-zinc-700 overflow-hidden transition-all duration-150 ${
                           scrubbing ? 'h-2' : 'h-1.5 group-hover/bar:h-2'
@@ -157,6 +126,24 @@ export default function MusicList({ tracks }: MusicListProps) {
                           style={{ width: `${progress * 100}%` }}
                         />
                       </div>
+
+                      <input
+                        type="range"
+                        min={0}
+                        max={duration || 0}
+                        step="any"
+                        value={displayTime}
+                        disabled={!duration}
+                        aria-label={`Seek ${track.title}`}
+                        onPointerDown={() => setScrubTime(currentTime)}
+                        onTouchStart={() => setScrubTime(currentTime)}
+                        onChange={(e) => setScrubTime(Number(e.target.value))}
+                        onPointerUp={commitScrub}
+                        onTouchEnd={commitScrub}
+                        onKeyUp={commitScrub}
+                        onBlur={commitScrub}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer touch-none appearance-none bg-transparent"
+                      />
                     </div>
                   </motion.div>
                 ) : (
@@ -180,7 +167,7 @@ export default function MusicList({ tracks }: MusicListProps) {
             )}
 
             <AnimatePresence initial={false}>
-              {isCurrent && (
+              {isActive && (
                 <motion.time
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
