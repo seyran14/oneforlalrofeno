@@ -27,3 +27,9 @@ MEDIA_BASE_URL = "https://files.seyran.cc"
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "seyran-media"
+
+# Без этого воркер не пишет логи вообще, и разбирать сбои приходится по тому,
+# что бот успел ответить в телеграм
+[observability]
+enabled = true
+head_sampling_rate = 1
