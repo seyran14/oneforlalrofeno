@@ -88,11 +88,12 @@ export default function MusicList({ tracks }: MusicListProps) {
         const isActive = isCurrent && isPlaying;
 
         return (
+          // Появляются сразу все: по скроллу последняя строка на телефоне
+          // не дотягивала до порога видимости и её название ждало прокрутки
           <motion.div
             key={track.id}
             initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut', delay: Math.min(index, 8) * 0.04 }}
             className="flex items-center gap-4 py-5 border-b border-zinc-800/50"
           >
