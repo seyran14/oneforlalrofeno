@@ -62,8 +62,20 @@ function fileExtension(name) {
   return match ? match[1].toLowerCase() : '';
 }
 
-function slugify(text) {
-  return text.replace(/[^a-zA-Z0-9._-]/g, '-');
+/**
+ * Имя файла из подписи. Серии неподходящих символов схлопываются в один дефис,
+ * края обрезаются. Подпись из одних эмодзи или кириллицы слугифицируется в
+ * пустоту — такие раньше сходились в общий «-.jpg» и затирали друг друга,
+ * поэтому для них берётся имя исходного файла.
+ */
+function slugify(text, fallback = '') {
+  const clean = (s) => s.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^[-.]+|-+$/g, '');
+
+  return (
+    clean(text) ||
+    clean(fallback.replace(/\.[^.]*$/, '')) ||
+    `file-${Date.now()}`
+  );
 }
 
 function audioExtension(audio) {
@@ -205,7 +217,7 @@ bot.on('photo', async (ctx) => {
     return ctx.reply('Send a caption with the photo — it becomes the title and the filename.\nExample: caption = "concert-2024"');
   }
 
-  const filename = slugify(caption) + '.jpg';
+  const filename = slugify(caption, `photo-${Date.now()}`) + '.jpg';
 
   await publish(ctx, {
     fileId: ctx.message.photo.at(-1).file_id,
@@ -228,7 +240,7 @@ async function handleAudio(ctx, audio) {
   }
 
   const ext = audioExtension(audio);
-  const filename = slugify(caption) + '.' + ext;
+  const filename = slugify(caption, audio.file_name) + '.' + ext;
 
   await publish(ctx, {
     fileId: audio.file_id,

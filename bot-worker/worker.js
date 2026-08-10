@@ -96,7 +96,7 @@ async function handleUpdate(update, env) {
       return;
     }
 
-    const filename = slugify(caption) + '.jpg';
+    const filename = slugify(caption, `photo-${Date.now()}`) + '.jpg';
     await publish(env, chatId, {
       fileId: msg.photo[msg.photo.length - 1].file_id,
       path: `${IMAGES_PATH}/${filename}`,
@@ -121,7 +121,7 @@ async function handleUpdate(update, env) {
     }
 
     const ext = audioExtension(audio);
-    const filename = slugify(caption) + '.' + ext;
+    const filename = slugify(caption, audio.file_name) + '.' + ext;
 
     await publish(env, chatId, {
       fileId: audio.file_id,
@@ -190,8 +190,21 @@ function fileExtension(name) {
   return match ? match[1].toLowerCase() : '';
 }
 
-function slugify(text) {
-  return text.replace(/[^a-zA-Z0-9._-]/g, '-');
+/**
+ * Filename from a caption. Runs of unsupported characters collapse into one
+ * dash and the edges are trimmed, so "KickStart my ❤️‍🔥" is not left with a
+ * tail of them. A caption that is only emoji or Cyrillic slugifies to nothing
+ * at all — those used to collide on a single "-.jpg" and overwrite each
+ * other, so they fall back to the original filename.
+ */
+function slugify(text, fallback = '') {
+  const clean = (s) => s.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^[-.]+|-+$/g, '');
+
+  return (
+    clean(text) ||
+    clean(fallback.replace(/\.[^.]*$/, '')) ||
+    `file-${Date.now()}`
+  );
 }
 
 /**
@@ -382,7 +395,7 @@ async function handleUpload(request, env, url) {
   }
 
   const ext = fileExtension(filename) || 'mp3';
-  const objectKey = slugify(title) + '.' + ext;
+  const objectKey = slugify(title, filename) + '.' + ext;
 
   try {
     // Streamed, never buffered: these files run to tens of megabytes. R2 only
