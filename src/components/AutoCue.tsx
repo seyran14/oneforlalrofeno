@@ -20,7 +20,8 @@ export default function AutoCue() {
       role="switch"
       aria-checked={state.autoCue}
       onClick={() => player.setAutoCue(!state.autoCue)}
-      className="group flex items-center gap-2.5 shrink-0"
+      // mb — чтобы центр переключателя встал ровно на строку подзаголовка
+      className="group flex items-center gap-2.5 shrink-0 mb-[2px]"
     >
       <span
         className={`font-mono text-xs tracking-wide transition-colors duration-200 ${
