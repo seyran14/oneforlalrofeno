@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { player, type PlayerTrack } from '../lib/player';
 import { formatTime } from '../lib/formatTime';
 
@@ -11,6 +11,11 @@ export default function MusicList({ tracks }: MusicListProps) {
   // Звук живёт в общем хранилище, поэтому переход на другую страницу
   // его не прерывает, а список просто отражает состояние
   const state = useSyncExternalStore(player.subscribe, player.getSnapshot, player.getServerSnapshot);
+
+  // Порядок треков нужен плееру, чтобы auto cue знал, что ставить следующим
+  useEffect(() => {
+    player.setQueue(tracks);
+  }, [tracks]);
 
   // Пока ползунок держат, трек продолжает играть с прежнего места, а шкала и
   // отсчёт показывают выбранную позицию. Перемотка происходит на отпускании.
