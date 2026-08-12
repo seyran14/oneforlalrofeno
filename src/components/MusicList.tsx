@@ -1,91 +1,34 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRef, useState } from 'react';
-
-interface Track {
-  id: string;
-  title: string;
-  audioUrl: string;
-}
+import { useState, useSyncExternalStore } from 'react';
+import { player, type PlayerTrack } from '../lib/player';
+import { formatTime } from '../lib/formatTime';
 
 interface MusicListProps {
-  tracks: Track[];
-}
-
-/** Обратный отсчёт: 4:07, а для часовых миксов 1:02:15. */
-function formatTime(seconds: number) {
-  if (!isFinite(seconds) || seconds < 0) return '--:--';
-
-  const total = Math.floor(seconds);
-  const s = total % 60;
-  const m = Math.floor(total / 60) % 60;
-  const h = Math.floor(total / 3600);
-  const pad = (n: number) => String(n).padStart(2, '0');
-
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  tracks: PlayerTrack[];
 }
 
 export default function MusicList({ tracks }: MusicListProps) {
-  // Один общий <audio> на весь список — значит одновременно играет только один трек
-  const audioRef = useRef<HTMLAudioElement>(null);
+  // Звук живёт в общем хранилище, поэтому переход на другую страницу
+  // его не прерывает, а список просто отражает состояние
+  const state = useSyncExternalStore(player.subscribe, player.getSnapshot, player.getServerSnapshot);
 
-  const [currentId, setCurrentId] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [failedId, setFailedId] = useState<string | null>(null);
-
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
   // Пока ползунок держат, трек продолжает играть с прежнего места, а шкала и
   // отсчёт показывают выбранную позицию. Перемотка происходит на отпускании.
   const [scrubTime, setScrubTime] = useState<number | null>(null);
 
-  const play = (track: Track) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    setFailedId(null);
-
-    // Тот же трек — пауза/продолжить с текущего места
-    if (currentId === track.id) {
-      if (isPlaying) {
-        audio.pause();
-      } else {
-        audio.play().catch(() => setFailedId(track.id));
-      }
-      return;
-    }
-
-    // Другой трек — переключаемся и играем с начала
-    setCurrentId(track.id);
-    setDuration(0);
-    setCurrentTime(0);
-    setScrubTime(null);
-    audio.src = track.audioUrl;
-    audio.currentTime = 0;
-    audio.play().catch(() => {
-      setFailedId(track.id);
-      setCurrentId(null);
-    });
-  };
-
-  /** Отпустили — вот теперь перематываем. */
   const commitScrub = () => {
-    const audio = audioRef.current;
-    if (audio && scrubTime !== null) {
-      audio.currentTime = scrubTime;
-      setCurrentTime(scrubTime);
-    }
+    if (scrubTime !== null) player.seek(scrubTime);
     setScrubTime(null);
   };
 
   const scrubbing = scrubTime !== null;
-  const displayTime = scrubTime ?? currentTime;
-  const progress = duration > 0 ? Math.min(1, displayTime / duration) : 0;
+  const displayTime = scrubTime ?? state.time;
+  const progress = state.duration > 0 ? Math.min(1, displayTime / state.duration) : 0;
 
   return (
     <div className="border-t border-zinc-800/50">
       {tracks.map((track, index) => {
-        const isCurrent = currentId === track.id;
-        const isActive = isCurrent && isPlaying;
+        const isActive = state.track?.id === track.id && state.playing;
 
         return (
           // Появляются сразу все: по скроллу последняя строка на телефоне
@@ -131,13 +74,13 @@ export default function MusicList({ tracks }: MusicListProps) {
                       <input
                         type="range"
                         min={0}
-                        max={duration || 0}
+                        max={state.duration || 0}
                         step="any"
                         value={displayTime}
-                        disabled={!duration}
+                        disabled={!state.duration}
                         aria-label={`Seek ${track.title}`}
-                        onPointerDown={() => setScrubTime(currentTime)}
-                        onTouchStart={() => setScrubTime(currentTime)}
+                        onPointerDown={() => setScrubTime(state.time)}
+                        onTouchStart={() => setScrubTime(state.time)}
                         onChange={(e) => setScrubTime(Number(e.target.value))}
                         onPointerUp={commitScrub}
                         onTouchEnd={commitScrub}
@@ -154,7 +97,7 @@ export default function MusicList({ tracks }: MusicListProps) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
-                    onClick={() => play(track)}
+                    onClick={() => player.toggle(track)}
                     className="absolute inset-x-0 text-left truncate text-lg text-zinc-400 hover:text-white transition-colors duration-200"
                   >
                     {track.title}
@@ -163,7 +106,7 @@ export default function MusicList({ tracks }: MusicListProps) {
               </AnimatePresence>
             </div>
 
-            {failedId === track.id && (
+            {state.failedId === track.id && (
               <span className="shrink-0 text-xs font-mono text-zinc-600">unavailable</span>
             )}
 
@@ -176,13 +119,13 @@ export default function MusicList({ tracks }: MusicListProps) {
                   transition={{ duration: 0.18 }}
                   className="shrink-0 font-mono text-xs text-zinc-500 tabular-nums"
                 >
-                  −{formatTime(duration - displayTime)}
+                  −{formatTime(state.duration - displayTime)}
                 </motion.time>
               )}
             </AnimatePresence>
 
             <button
-              onClick={() => play(track)}
+              onClick={() => player.toggle(track)}
               aria-label={isActive ? `Pause ${track.title}` : `Play ${track.title}`}
               className={`shrink-0 flex items-center justify-center w-10 h-10 rounded-full border transition-colors duration-200 ${
                 isActive
@@ -204,27 +147,6 @@ export default function MusicList({ tracks }: MusicListProps) {
           </motion.div>
         );
       })}
-
-      <audio
-        ref={audioRef}
-        preload="none"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
-        onDurationChange={(e) => setDuration(e.currentTarget.duration || 0)}
-        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-        onEnded={() => {
-          setIsPlaying(false);
-          setCurrentId(null);
-          setCurrentTime(0);
-        }}
-        onError={() => {
-          // Шкала для трека, который не открылся, только мешает — возвращаем название
-          setIsPlaying(false);
-          setFailedId(currentId);
-          setCurrentId(null);
-        }}
-      />
     </div>
   );
 }

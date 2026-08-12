@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { ViewTransitions } from 'astro:transitions';
 
 interface Props {
   title?: string;
@@ -21,6 +22,11 @@ const {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <link rel="alternate" type="application/rss+xml" title="Seyran" href="/rss.xml" />
+
+    <!-- Переходы без перезагрузки: только так музыка продолжает играть,
+         когда уходишь с Media смотреть фотографии. Сам звук живёт в
+         src/lib/player.ts объектом в памяти, вне разметки -->
+    <ViewTransitions />
     <title>{title}</title>
     
     <!-- Fonts -->
